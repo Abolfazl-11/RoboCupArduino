@@ -3319,7 +3319,7 @@ void MPU6050_Base::PID(uint8_t ReadAddress, float kP,float kI, uint8_t Loops){
 	uint32_t eSum;
 	uint16_t gravity = 8192; // prevent uninitialized compiler warning
 	if (ReadAddress == 0x3B) gravity = 16384 >> getFullScaleAccelRange();
-	Serial.write('>');
+	//Serial.write('>');
 	for (int i = 0; i < 3; i++) {
 		I2Cdev::readWords(devAddr, SaveAddress + (i * shift), 1, (uint16_t *)&Data, I2Cdev::readTimeout, wireObj); // reads 1 or more 16 bit integers (Word)
 		Reading = Data;
@@ -3350,13 +3350,13 @@ void MPU6050_Base::PID(uint8_t ReadAddress, float kP,float kI, uint8_t Loops){
 			}
 			if((c == 99) && eSum > 1000){						// Error is still to great to continue 
 				c = 0;
-				Serial.write('*');
+				//Serial.write('*');
 			}
 			if((eSum * ((ReadAddress == 0x3B)?.05: 1)) < 5) eSample++;	// Successfully found offsets prepare to  advance
 			if((eSum < 100) && (c > 10) && (eSample >= 10)) break;		// Advance to next Loop
 			delay(1);
 		}
-		Serial.write('.');
+		//Serial.write('.');
 		kP *= .75;
 		kI *= .75;
 		for (int i = 0; i < 3; i++){
@@ -3386,12 +3386,12 @@ int16_t * MPU6050_Base::GetActiveOffsets() {
 void MPU6050_Base::PrintActiveOffsets() {
     GetActiveOffsets();
 	//	A_OFFSET_H_READ_A_OFFS(Data);
-    Serial.print((float)offsets[0], 5); Serial.print(",\t");
-    Serial.print((float)offsets[1], 5); Serial.print(",\t");
-    Serial.print((float)offsets[2], 5); Serial.print(",\t");
+    //Serial.print((float)offsets[0], 5); Serial.print(",\t");
+    //Serial.print((float)offsets[1], 5); Serial.print(",\t");
+    //Serial.print((float)offsets[2], 5); Serial.print(",\t");
 	
 	//	XG_OFFSET_H_READ_OFFS_USR(Data);
-    Serial.print((float)offsets[3], 5); Serial.print(",\t");
-    Serial.print((float)offsets[4], 5); Serial.print(",\t");
-    Serial.print((float)offsets[5], 5); Serial.print("\n\n");
+    //Serial.print((float)offsets[3], 5); Serial.print(",\t");
+    //Serial.print((float)offsets[4], 5); Serial.print(",\t");
+    //Serial.print((float)offsets[5], 5); Serial.print("\n\n");
 }

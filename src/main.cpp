@@ -1,8 +1,7 @@
 // includes
 #include <Arduino.h>
-//#include "./MPU6050/MPU6050_DMP6.h"
-
-#define setPWM(t, c, p) t->setCaptureCompare(c, p, PERCENT_COMPARE_FORMAT)
+#include "./MPU6050/MPU6050_DMP6.h"
+#include "./Movement/Motors.hpp"
 
 // Defines
 #define MPU_READ_TH 200
@@ -12,7 +11,7 @@ long long timerCounter = 0;
 int blink = 1;
 
 int dmpR = 0;
-//DMP_DATA gyro;
+DMP_DATA gyro;
 
 // Timers
 HardwareTimer* tim1 = new HardwareTimer(TIM1);
@@ -21,6 +20,14 @@ HardwareTimer* tim2 = new HardwareTimer(TIM2);
 
 HardwareTimer* tim3 = new HardwareTimer(TIM3);
 
+// Motors Declaration
+Motor* motor1 = new Motor(tim3, 1, PA3);
+Motor* motor2 = new Motor(tim1, 4, PA12);
+Motor* motor3 = new Motor(tim1, 2, PA4);
+Motor* motor4 = new Motor(tim1, 1, PA10);
+
+Driver* driver = new Driver(motor1, motor2, motor3, motor4);
+
 // Function Declaration
 void setupTimers();
 
@@ -28,13 +35,13 @@ void setupTimers();
 void Timer_IT_Callback() {
     timerCounter++;
 
-    //if (!(timerCounter%500) && dmpR) {
-        //blink = !blink;
-        //digitalWrite(PC13, (blink ? HIGH : LOW));
-    //}
+    if (!(timerCounter%500) && dmpR) {
+        blink = !blink;
+        digitalWrite(PC13, (blink ? HIGH : LOW));
+    }
 
     if (!(timerCounter%MPU_READ_TH) && dmpR) {
-        //getDMPData(&gyro);
+        getDMPData(&gyro);
     }
 }
 
@@ -42,30 +49,14 @@ void setup(){
     // pin setup
     pinMode(PC13, OUTPUT);
 
-    // Motor 4
-    pinMode(PA10, OUTPUT);
-    // Motor 3
-    pinMode(PA4, OUTPUT);
-    // Motor 1
-    pinMode(PA3, OUTPUT);
-    // Motor 2
-    pinMode(PA12, OUTPUT);
-
-    digitalWrite(PA10, LOW);
-    digitalWrite(PA4, LOW);
-    digitalWrite(PA3, LOW);
-    digitalWrite(PA12, LOW);
-
     digitalWrite(PC13, HIGH);
     delay(500);
     digitalWrite(PC13, LOW);
     delay(500);
 
-    //Serial.begin(9600);
-
     setupTimers();
 
-    //dmpR = setupMPU6050DMP(25);
+    dmpR = setupMPU6050DMP(25);
 
     if (dmpR) {
         digitalWrite(PC13, HIGH);
@@ -75,22 +66,8 @@ void setup(){
     delay(500);
 }
 
-int i = 0;
-void loop(){
-    //if (dmpR) {
-        //if (abs(gyro.yaw) >= 1) {
-            //blink = !blink;
-//
-            //digitalWrite(PC13, (blink ? HIGH : LOW));
-//
-            //delay(abs(gyro.yaw) * 10);
-        //}
-        //else {
-            //digitalWrite(PC13, LOW);
-        //}
-    //}
+void loop() {
 
-    delay(200);
 }
 
 // Setting up system clock on 48MHz
@@ -141,6 +118,7 @@ void setupTimers() {
     tim1->setMode(4, TIMER_OUTPUT_COMPARE_PWM1, PA11);
 
     tim1->setOverflow(10000, MICROSEC_FORMAT);
+    // Motor 4
     tim1->setCaptureCompare(1, 0, PERCENT_COMPARE_FORMAT);
     // Motor 3
     tim1->setCaptureCompare(2, 0, PERCENT_COMPARE_FORMAT);
