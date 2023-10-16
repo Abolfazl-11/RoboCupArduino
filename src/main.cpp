@@ -2,9 +2,16 @@
 #include <Arduino.h>
 #include "./MPU6050/MPU6050_DMP6.h"
 #include "./Movement/Motors.hpp"
+#include "./Pixy/Pixy.hpp"
+//#include "./Debugger/Debugger.hpp"
+#include <LiquidCrystal.h>
+#include <SPI.h>
 
 // Defines
 #define MPU_READ_TH 200
+#define DEBUG_TIM 200
+
+#define DEBUG
 
 // Variables
 long long timerCounter = 0;
@@ -12,6 +19,25 @@ int blink = 1;
 
 int dmpR = 0;
 DMP_DATA gyro;
+
+// pixy
+BallTransform ballTransform = {0, 0};
+
+//Pixy* pixy = new Pixy(&pixy_t, &ballTransform);
+
+// Debugger
+#ifdef DEBUG
+
+int d4 = PC10, d5 = PC11, d6 = PC12, d7 = PD2, en = PB10, rs = PB11;
+
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+
+int current = 0;
+int len = 0;
+
+#else
+
+#endif
 
 // Timers
 HardwareTimer* tim1 = new HardwareTimer(TIM1);
@@ -28,6 +54,16 @@ Motor* motor4 = new Motor(tim1, 1, PA10);
 
 Driver* driver = new Driver(motor1, motor2, motor3, motor4);
 
+SPIClass SPI_1(PB5, PB4, PB3);
+
+uint8_t version_request[] = {
+    0xae,  // first byte of no_checksum_sync (little endian -> least-significant byte first)
+    0xc1,  // second byte of no_checksum_sync
+    0x0e,  // this is the version request type
+    0x00   // data_length is 0
+};
+
+uint8_t buffer;
 // Function Declaration
 void setupTimers();
 
@@ -43,6 +79,18 @@ void Timer_IT_Callback() {
     if (!(timerCounter%MPU_READ_TH) && dmpR) {
         getDMPData(&gyro);
     }
+
+    /*
+    if (!(timerCounter%DEBUG_TIM)) {
+        lcd.setCursor(0, 0);
+        lcd.print("Ball Pos: ");
+        lcd.setCursor(0, 1);
+        lcd.print("x: ");
+        lcd.print(ballTransform.x);
+        lcd.print("y: ");
+        lcd.print(ballTransform.y);
+    }
+    */
 }
 
 void setup(){
@@ -54,17 +102,41 @@ void setup(){
     digitalWrite(PC13, LOW);
     delay(500);
 
+    lcd.begin(16, 2);
+
+    lcd.clear();
+
     setupTimers();
 
     dmpR = setupMPU6050DMP(25);
 
     if (dmpR) {
         digitalWrite(PC13, HIGH);
+        lcd.setCursor(0, 0);
+        lcd.print("gyro init");
         delay(1000);
+        lcd.clear();
     }
     digitalWrite(PC13, LOW);
     delay(500);
+
+    SPI_1.begin();
+    SPI_1.setDataMode(SPI_MODE3);
+    SPI_1.setClockDivider(SPI_CLOCK_DIV8);
+
+    SPI_1.beginTransaction();
+    SPI_1.transfer(version_request, 4);
+
+    delay(1);
+
+    lcd.setCursor(0, 1);
+    lcd.print(buffer);
+
+    lcd.setCursor(0, 0);
+    lcd.print("pixy init");
 }
+
+int i = 0;
 
 void loop() {
 
@@ -134,5 +206,5 @@ void setupTimers() {
     // Motor 1
     tim3->setCaptureCompare(1, 0, PERCENT_COMPARE_FORMAT);
     
-    tim3->resume();
+    //tim3->resume();
 }
