@@ -2,14 +2,18 @@
 #include <Arduino.h>
 #include "./MPU6050/MPU6050_DMP6.h"
 #include "./Movement/Motors.hpp"
-#include "./Pixy/Pixy.hpp"
-//#include "./Debugger/Debugger.hpp"
+#include "./Pixy/Pixy2.h"
 #include <LiquidCrystal.h>
-#include <SPI.h>
 
 // Defines
 #define MPU_READ_TH 200
 #define DEBUG_TIM 200
+#define PIXY_READ_TH 200
+
+#define PIXY_X_MIN 150
+#define PIXY_X_MAX 250
+#define PIXY_Y_MIN 150
+#define PIXY_Y_MAX 250
 
 #define DEBUG
 
@@ -21,19 +25,28 @@ int dmpR = 0;
 DMP_DATA gyro;
 
 // pixy
+Pixy2 pixy_t;
+
+typedef struct BallTransform {
+    int x;
+    int y;
+} BallTransform;
+
 BallTransform ballTransform = {0, 0};
 
-//Pixy* pixy = new Pixy(&pixy_t, &ballTransform);
+bool pixy_init = false;
 
 // Debugger
 #ifdef DEBUG
 
-int d4 = PC10, d5 = PC11, d6 = PC12, d7 = PD2, en = PB10, rs = PB11;
+int d4 = PC10, d5 = PC11, d6 = PC12, d7 = PD2, en = PB7, rs = PB6;
 
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 int current = 0;
 int len = 0;
+
+bool setuped = false;
 
 #else
 
@@ -54,30 +67,27 @@ Motor* motor4 = new Motor(tim1, 1, PA10);
 
 Driver* driver = new Driver(motor1, motor2, motor3, motor4);
 
-SPIClass SPI_1(PB5, PB4, PB3);
-
-uint8_t version_request[] = {
-    0xae,  // first byte of no_checksum_sync (little endian -> least-significant byte first)
-    0xc1,  // second byte of no_checksum_sync
-    0x0e,  // this is the version request type
-    0x00   // data_length is 0
-};
-
-uint8_t buffer;
 // Function Declaration
 void setupTimers();
+
+uint8_t init_pixy();
+uint8_t GetBallPos();
 
 // Timer interrupt callback function
 void Timer_IT_Callback() {
     timerCounter++;
 
-    if (!(timerCounter%500) && dmpR) {
+    if (!(timerCounter%500) && setuped) {
         blink = !blink;
         digitalWrite(PC13, (blink ? HIGH : LOW));
     }
 
-    if (!(timerCounter%MPU_READ_TH) && dmpR) {
+    if (!(timerCounter%MPU_READ_TH) && setuped) {
         getDMPData(&gyro);
+    }
+
+    if (!(timerCounter%PIXY_READ_TH) && setuped) {
+        GetBallPos();
     }
 
     /*
@@ -106,7 +116,19 @@ void setup(){
 
     lcd.clear();
 
+    lcd.setCursor(0, 0);
+    lcd.print("Hello, World!");
+    delay(1000);
+    lcd.clear();
+
     setupTimers();
+
+    init_pixy();
+
+    Wire.setSDA(PB11);
+    Wire.setSCL(PB10);
+    Wire.begin();
+    Wire.setClock(400000);
 
     dmpR = setupMPU6050DMP(25);
 
@@ -120,26 +142,10 @@ void setup(){
     digitalWrite(PC13, LOW);
     delay(500);
 
-    SPI_1.begin();
-    SPI_1.setDataMode(SPI_MODE3);
-    SPI_1.setClockDivider(SPI_CLOCK_DIV8);
-
-    SPI_1.beginTransaction();
-    SPI_1.transfer(version_request, 4);
-
-    delay(1);
-
-    lcd.setCursor(0, 1);
-    lcd.print(buffer);
-
-    lcd.setCursor(0, 0);
-    lcd.print("pixy init");
+    setuped = pixy_init && dmpR;
 }
 
-int i = 0;
-
 void loop() {
-
 }
 
 // Setting up system clock on 48MHz
@@ -207,4 +213,67 @@ void setupTimers() {
     tim3->setCaptureCompare(1, 0, PERCENT_COMPARE_FORMAT);
     
     //tim3->resume();
+}
+
+uint8_t init_pixy() {
+    int8_t rp = pixy_t.init();
+#ifdef DEBUG
+    lcd.clear();
+    if (rp == PIXY_RESULT_OK) {
+        pixy_init = true;
+        lcd.print("Pixy Init");
+        lcd.setCursor(0, 1);
+        lcd.print(pixy_t.getVersion());
+    }
+    else {
+        lcd.print("Pixy timeout");
+    }
+    delay(500);
+
+    lcd.clear();
+#endif
+
+    return rp;
+}
+
+uint8_t GetBallPos() {
+    int8_t r = pixy_t.ccc.getBlocks();
+    
+
+
+    if (pixy_t.ccc.numBlocks > 0) {
+        Block b = pixy_t.ccc.blocks[0];
+
+        if (b.m_x < PIXY_X_MIN || b.m_x > PIXY_X_MAX || b.m_y < PIXY_Y_MIN || b.m_y > PIXY_Y_MAX) {
+            return 0;
+        }
+
+        ballTransform.x = b.m_x - (PIXY_X_MAX - PIXY_X_MIN) / 2;
+        ballTransform.y = b.m_y - (PIXY_Y_MAX - PIXY_Y_MIN) / 2;
+    }
+
+#ifdef DEBUG
+    if (r == PIXY_RESULT_ERROR) {
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Error");
+    }
+    else if (r == PIXY_RESULT_BUSY) {
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Busy");
+    }
+    else {
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Dtected");
+        lcd.setCursor(0, 1);
+        lcd.print("x: ");
+        lcd.print(ballTransform.x);
+        lcd.print(" y: ");
+        lcd.print(ballTransform.y);
+    }
+#endif
+
+    return r;
 }
