@@ -1,19 +1,25 @@
 // includes
 #include <Arduino.h>
+#include <math.h>
 #include "./MPU6050/MPU6050_DMP6.h"
 #include "./Movement/Motors.hpp"
 #include "./Pixy/Pixy2.h"
 #include <LiquidCrystal.h>
+#include "./Movement/Moves.hpp"
 
 // Defines
 #define MPU_READ_TH 200
 #define DEBUG_TIM 200
-#define PIXY_READ_TH 200
+#define PIXY_READ_TH 300
 
-#define PIXY_X_MIN 150
-#define PIXY_X_MAX 250
-#define PIXY_Y_MIN 150
-#define PIXY_Y_MAX 250
+#define PIXY_X_MIN 52
+#define PIXY_X_MAX 267
+#define PIXY_Y_MIN 0
+#define PIXY_Y_MAX 207
+#define PIXY_X_MID 157
+#define PIXY_Y_MID 103
+
+#define ROTTH 4
 
 #define DEBUG
 
@@ -30,15 +36,16 @@ Pixy2 pixy_t;
 typedef struct BallTransform {
     int x;
     int y;
+    int r;
+    int theta;
+    bool detected;
 } BallTransform;
 
-BallTransform ballTransform = {0, 0};
+BallTransform ballTransform = {0, 0, 0, 0, false};
 
 bool pixy_init = false;
 
 // Debugger
-#ifdef DEBUG
-
 int d4 = PC10, d5 = PC11, d6 = PC12, d7 = PD2, en = PB7, rs = PB6;
 
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
@@ -48,10 +55,6 @@ int len = 0;
 
 bool setuped = false;
 
-#else
-
-#endif
-
 // Timers
 HardwareTimer* tim1 = new HardwareTimer(TIM1);
 
@@ -60,12 +63,16 @@ HardwareTimer* tim2 = new HardwareTimer(TIM2);
 HardwareTimer* tim3 = new HardwareTimer(TIM3);
 
 // Motors Declaration
-Motor* motor1 = new Motor(tim3, 1, PA3);
-Motor* motor2 = new Motor(tim1, 4, PA12);
-Motor* motor3 = new Motor(tim1, 2, PA4);
-Motor* motor4 = new Motor(tim1, 1, PA10);
+Motor* motor1 = new Motor(tim1, 2, PA8, 0, 1);
+Motor* motor2 = new Motor(tim1, 3, PA4, 1, 1);
+Motor* motor3 = new Motor(tim2, 4, PA12, 0, 0); 
+Motor* motor4 = new Motor(tim1, 4, PA6, 1, 1);
 
 Driver* driver = new Driver(motor1, motor2, motor3, motor4);
+
+Moves* moves = new Moves(driver);
+
+Zones zone = NA;
 
 // Function Declaration
 void setupTimers();
@@ -84,9 +91,16 @@ void Timer_IT_Callback() {
 
     if (!(timerCounter%MPU_READ_TH) && setuped) {
         getDMPData(&gyro);
+        if (abs(gyro.yaw) > ROTTH) {
+            moves->RotateToZero(gyro.yaw);
+        }
+        else {
+            driver->Brake();
+        }
     }
 
     if (!(timerCounter%PIXY_READ_TH) && setuped) {
+        lcd.clear();
         GetBallPos();
     }
 
@@ -187,37 +201,36 @@ extern "C" void SystemClock_Config(void) {
 void setupTimers() {
     // IT Timer
     tim2->setOverflow(1000, MICROSEC_FORMAT);
-    tim2->attachInterrupt(Timer_IT_Callback);
+
+    tim2->setMode(4, TIMER_OUTPUT_COMPARE_PWM1, PA3);
+
+    // Motor 3
+    tim2->setCaptureCompare(4, 0, PERCENT_COMPARE_FORMAT);
+
     tim2->resume();
 
     // TIM1 PWM
-    tim1->setMode(1, TIMER_OUTPUT_COMPARE_PWM1, PA8);
     tim1->setMode(2, TIMER_OUTPUT_COMPARE_PWM1, PA9);
+    tim1->setMode(3, TIMER_OUTPUT_COMPARE_PWM1, PA10);
     tim1->setMode(4, TIMER_OUTPUT_COMPARE_PWM1, PA11);
 
     tim1->setOverflow(10000, MICROSEC_FORMAT);
-    // Motor 4
-    tim1->setCaptureCompare(1, 0, PERCENT_COMPARE_FORMAT);
-    // Motor 3
+    // Motor 1
     tim1->setCaptureCompare(2, 0, PERCENT_COMPARE_FORMAT);
     // Motor 2
+    tim1->setCaptureCompare(3, 0, PERCENT_COMPARE_FORMAT);
+    // Motor 4
     tim1->setCaptureCompare(4, 0, PERCENT_COMPARE_FORMAT);
 
     tim1->resume();
 
     // TIM3 PWM
-    tim3->setMode(1, TIMER_OUTPUT_COMPARE_PWM1, PA6);
-
-    tim3->setOverflow(10000, MICROSEC_FORMAT);
-    // Motor 1
-    tim3->setCaptureCompare(1, 0, PERCENT_COMPARE_FORMAT);
-    
-    //tim3->resume();
+    tim3->setOverflow(1000, MICROSEC_FORMAT);
+    tim3->attachInterrupt(Timer_IT_Callback);
+    tim3->resume();
 }
 
-uint8_t init_pixy() {
-    int8_t rp = pixy_t.init();
-#ifdef DEBUG
+uint8_t init_pixy() {       int8_t rp = pixy_t.init();
     lcd.clear();
     if (rp == PIXY_RESULT_OK) {
         pixy_init = true;
@@ -229,49 +242,60 @@ uint8_t init_pixy() {
         lcd.print("Pixy timeout");
     }
     delay(500);
-
     lcd.clear();
-#endif
 
     return rp;
 }
 
 uint8_t GetBallPos() {
     int8_t r = pixy_t.ccc.getBlocks();
-    
-
 
     if (pixy_t.ccc.numBlocks > 0) {
         Block b = pixy_t.ccc.blocks[0];
 
         if (b.m_x < PIXY_X_MIN || b.m_x > PIXY_X_MAX || b.m_y < PIXY_Y_MIN || b.m_y > PIXY_Y_MAX) {
+            ballTransform.detected = false;
             return 0;
         }
 
-        ballTransform.x = b.m_x - (PIXY_X_MAX - PIXY_X_MIN) / 2;
-        ballTransform.y = b.m_y - (PIXY_Y_MAX - PIXY_Y_MIN) / 2;
+        ballTransform.detected = true;
+
+        ballTransform.x = b.m_x - PIXY_X_MID;
+        ballTransform.y = -(b.m_y - PIXY_Y_MID);
+        ballTransform.r = sqrt(ballTransform.x * ballTransform.x + ballTransform.y * ballTransform.y);
+        if (ballTransform.x >= 0) {
+            ballTransform.theta = -(atan2(ballTransform.y, ballTransform.x) * RAD_TO_DEG - 90);
+        }
+        else {
+            ballTransform.theta = -((atan2(ballTransform.y, ballTransform.x) + PI) * RAD_TO_DEG - 90);
+        }
+    }
+    else {
+        ballTransform.detected = false;
     }
 
 #ifdef DEBUG
     if (r == PIXY_RESULT_ERROR) {
-        lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("Error");
     }
     else if (r == PIXY_RESULT_BUSY) {
-        lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("Busy");
     }
-    else {
-        lcd.clear();
+    else if (r > 0) {
         lcd.setCursor(0, 0);
         lcd.print("Dtected");
         lcd.setCursor(0, 1);
-        lcd.print("x: ");
-        lcd.print(ballTransform.x);
-        lcd.print(" y: ");
-        lcd.print(ballTransform.y);
+        lcd.print("r: ");
+        lcd.print(ballTransform.r);
+        lcd.print(" t: ");
+        lcd.print(ballTransform.theta);
+        moves->GetBall(ballTransform.r, ballTransform.theta, 30, &zone);
+    }
+    else {
+        driver->Brake();
+        lcd.clear();
     }
 #endif
 
