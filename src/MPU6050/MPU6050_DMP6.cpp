@@ -153,12 +153,6 @@ void dmpDataReady() {
 
 int setupMPU6050DMP(int citer) {
     // join I2C bus (I2Cdev library doesn't do this automatically)
-    #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-        Wire.begin();
-        Wire.setClock(400000); // 400kHz I2C clock. Comment this line if having compilation difficulties
-    #elif I2CDEV_IMPLEMENTATION == I2CDEV_BUILTIN_FASTWIRE
-        Fastwire::setup(400, true);
-    #endif
 
     // initialize serial communication
     // (115200 chosen because it is required for Teapot Demo output, but it's
