@@ -6,18 +6,20 @@
 #define LEFT 1
 #define RIGHT 0
 
+#define MAXSPEED 55
+
 class Motor {
     public:
         HardwareTimer* tim;
         int channle;
         uint16_t enable_pin;
         bool reverse;
-        uint32_t added;
+        float added;
 
         int current_speed = 0;
         int enable = 0;
 
-        Motor(HardwareTimer* tim, int channle, uint16_t enable_pin, bool r, uint32_t added);
+        Motor(HardwareTimer* tim, int channle, uint16_t enable_pin, bool r, float added);
 
         void setSpeed(const int speed, const int enable);
 };
@@ -33,7 +35,6 @@ class Driver {
         // Braking the motors
         void Brake();
 
-    protected:
         Motor* m1;
         Motor* m2;
         Motor* m3;

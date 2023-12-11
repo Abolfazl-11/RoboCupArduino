@@ -19,7 +19,6 @@
 #define PIXY_X_MID 157
 #define PIXY_Y_MID 103
 
-#define ROTTH 4
 
 #define DEBUG
 
@@ -63,10 +62,10 @@ HardwareTimer* tim2 = new HardwareTimer(TIM2);
 HardwareTimer* tim3 = new HardwareTimer(TIM3);
 
 // Motors Declaration
-Motor* motor1 = new Motor(tim1, 2, PA8, 0, 1);
+Motor* motor1 = new Motor(tim1, 2, PA8, 0, 1.1);
 Motor* motor2 = new Motor(tim1, 3, PA4, 1, 1);
-Motor* motor3 = new Motor(tim2, 4, PA12, 0, 0); 
-Motor* motor4 = new Motor(tim1, 4, PA6, 1, 1);
+Motor* motor3 = new Motor(tim2, 4, PA12, 1, 1);
+Motor* motor4 = new Motor(tim1, 4, PA6, 0, 1.1);
 
 Driver* driver = new Driver(motor1, motor2, motor3, motor4);
 
@@ -91,12 +90,7 @@ void Timer_IT_Callback() {
 
     if (!(timerCounter%MPU_READ_TH) && setuped) {
         getDMPData(&gyro);
-        if (abs(gyro.yaw) > ROTTH) {
-            moves->RotateToZero(gyro.yaw);
-        }
-        else {
-            driver->Brake();
-        }
+        moves->RotateToZero(gyro.yaw);
     }
 
     if (!(timerCounter%PIXY_READ_TH) && setuped) {
@@ -160,6 +154,7 @@ void setup(){
 }
 
 void loop() {
+
 }
 
 // Setting up system clock on 48MHz
@@ -230,7 +225,8 @@ void setupTimers() {
     tim3->resume();
 }
 
-uint8_t init_pixy() {       int8_t rp = pixy_t.init();
+uint8_t init_pixy() {       
+    int8_t rp = pixy_t.init();
     lcd.clear();
     if (rp == PIXY_RESULT_OK) {
         pixy_init = true;
@@ -291,9 +287,10 @@ uint8_t GetBallPos() {
         lcd.print(ballTransform.r);
         lcd.print(" t: ");
         lcd.print(ballTransform.theta);
-        moves->GetBall(ballTransform.r, ballTransform.theta, 30, &zone);
+        moves->GetBall(ballTransform.r, ballTransform.theta, 35, &zone);
     }
     else {
+        // Ball finding
         driver->Brake();
         lcd.clear();
     }

@@ -8,9 +8,12 @@
 #define TIME 0.200
 
 #define MAXROTATESPEED 20
+#define MOVEINGPIDMULT .55
 
 #define ZONEDISTH 50
 #define GETBALLANGLETH 15
+
+#define ROTTH 4
 
 typedef enum Zones {FAR, CLOSE, INGETBALL,  NA} Zones;
 
