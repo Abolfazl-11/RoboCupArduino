@@ -6,11 +6,13 @@
 #include "./Pixy/Pixy2.h"
 #include <LiquidCrystal.h>
 #include "./Movement/Moves.hpp"
+#include "./HCSR04/HCSR04.hpp"
 
 // Defines
-#define MPU_READ_TH 200
+#define MPU_READ_TH 5
 #define DEBUG_TIM 200
-#define PIXY_READ_TH 300
+#define PIXY_READ_TH 100
+#define SR_READ_TH 200
 
 #define PIXY_X_MIN 52
 #define PIXY_X_MAX 267
@@ -18,7 +20,6 @@
 #define PIXY_Y_MAX 207
 #define PIXY_X_MID 157
 #define PIXY_Y_MID 103
-
 
 #define DEBUG
 
@@ -44,6 +45,17 @@ BallTransform ballTransform = {0, 0, 0, 0, false};
 
 bool pixy_init = false;
 
+// HCSR04
+SR* sr1 = new SR(PA0, PC15);
+SR* sr2 = new SR(PB14, PB15);
+SR* sr3 = new SR(PB13, PB12);
+SR* sr4 = new SR(PA1, PA2);
+
+Position pos = {0, 0};
+
+SR_Controller* srController = new SR_Controller(sr1, sr2, sr3, sr4, &pos);
+
+double s1, s2, s3, s4;
 // Debugger
 int d4 = PC10, d5 = PC11, d6 = PC12, d7 = PD2, en = PB7, rs = PB6;
 
@@ -73,8 +85,18 @@ Moves* moves = new Moves(driver);
 
 Zones zone = NA;
 
+int nd = 0;
+
+typedef enum State {IN, OUT, HALTED} State;
+
+State state = IN;
+
+int outDir = 0;
+
 // Function Declaration
 void setupTimers();
+
+void ReadOutDir();
 
 uint8_t init_pixy();
 uint8_t GetBallPos();
@@ -83,19 +105,32 @@ uint8_t GetBallPos();
 void Timer_IT_Callback() {
     timerCounter++;
 
-    if (!(timerCounter%500) && setuped) {
+    if (!(timerCounter%500) && setuped && state == IN) {
         blink = !blink;
         digitalWrite(PC13, (blink ? HIGH : LOW));
     }
 
+    // Reading Pixy every 150ms
+    if (!(timerCounter%PIXY_READ_TH) && setuped) {
+        GetBallPos();
+    }
+
+    // Reading MPU6050 every 50ms
     if (!(timerCounter%MPU_READ_TH) && setuped) {
         getDMPData(&gyro);
         moves->RotateToZero(gyro.yaw);
     }
 
-    if (!(timerCounter%PIXY_READ_TH) && setuped) {
+    // Reading SRs every 200ms
+    if (!(timerCounter%SR_READ_TH) && setuped) {
+        //s1 = sr1->readsr();
+        //s2 = sr2->readsr();
+        //s3 = sr3->readsr();
+        //s4 = sr4->readsr();
+
         lcd.clear();
-        GetBallPos();
+        lcd.setCursor(0, 0);
+        lcd.print(s1);
     }
 
     /*
@@ -111,9 +146,22 @@ void Timer_IT_Callback() {
     */
 }
 
+void outEXTI_Callback() {
+    if (state == IN) {
+        state = OUT;
+        digitalWrite(PC13, LOW);
+    }
+}
+
 void setup(){
     // pin setup
     pinMode(PC13, OUTPUT);
+
+    pinMode(PB2, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(PB2), outEXTI_Callback, HIGH);
+
+    pinMode(PA7, INPUT);
+    pinMode(PB1, INPUT);
 
     digitalWrite(PC13, HIGH);
     delay(500);
@@ -153,8 +201,49 @@ void setup(){
     setuped = pixy_init && dmpR;
 }
 
-void loop() {
 
+void loop() {
+    switch(state) {
+        case IN:
+            if (ballTransform.detected) {
+                moves->GetBall(ballTransform.r, ballTransform.theta, 35, &zone);
+            }
+            else {
+                if (driver->isMoving) driver->Brake();
+            }
+
+            moves->RotateToZero(gyro.yaw);
+
+            break;
+        case OUT:
+            driver->Brake();
+            ReadOutDir();
+            state = HALTED;
+
+            break;
+        case HALTED:
+            // Front
+            if (outDir == 0) {
+                driver->gotoPoint(180, 30);
+            }
+            // Back
+            else if (outDir == 1) {
+                driver->gotoPoint(0, 30);
+            }
+            // Right
+            else if (outDir == 2) {
+                driver->gotoPoint(90, 30);
+            }
+            // Left
+            else if (outDir == 3) {
+                driver->gotoPoint(-90, 30);
+            }
+            delay(500);
+            driver->Brake();
+            state = IN;
+
+            break;
+    }
 }
 
 // Setting up system clock on 48MHz
@@ -225,6 +314,12 @@ void setupTimers() {
     tim3->resume();
 }
 
+void ReadOutDir() {
+    outDir = 0;
+    outDir += 2 * !digitalRead(PA7);
+    outDir += !digitalRead(PB1);
+}
+
 uint8_t init_pixy() {       
     int8_t rp = pixy_t.init();
     lcd.clear();
@@ -246,55 +341,60 @@ uint8_t init_pixy() {
 uint8_t GetBallPos() {
     int8_t r = pixy_t.ccc.getBlocks();
 
+    ballTransform.detected = false;
     if (pixy_t.ccc.numBlocks > 0) {
-        Block b = pixy_t.ccc.blocks[0];
+        for (int i = 0; i < pixy_t.ccc.numBlocks; i++) {
+            Block b = pixy_t.ccc.blocks[i];
 
-        if (b.m_x < PIXY_X_MIN || b.m_x > PIXY_X_MAX || b.m_y < PIXY_Y_MIN || b.m_y > PIXY_Y_MAX) {
-            ballTransform.detected = false;
-            return 0;
-        }
+            if (b.m_x < PIXY_X_MIN || b.m_x > PIXY_X_MAX || b.m_y < PIXY_Y_MIN || b.m_y > PIXY_Y_MAX) {
+                continue;
+            }
 
-        ballTransform.detected = true;
+            ballTransform.detected = true;
 
-        ballTransform.x = b.m_x - PIXY_X_MID;
-        ballTransform.y = -(b.m_y - PIXY_Y_MID);
-        ballTransform.r = sqrt(ballTransform.x * ballTransform.x + ballTransform.y * ballTransform.y);
-        if (ballTransform.x >= 0) {
-            ballTransform.theta = -(atan2(ballTransform.y, ballTransform.x) * RAD_TO_DEG - 90);
-        }
-        else {
-            ballTransform.theta = -((atan2(ballTransform.y, ballTransform.x) + PI) * RAD_TO_DEG - 90);
+            ballTransform.x = b.m_x - PIXY_X_MID;
+            ballTransform.y = -(b.m_y - PIXY_Y_MID);
+            ballTransform.r = sqrt(ballTransform.x * ballTransform.x + ballTransform.y * ballTransform.y);
+            if (ballTransform.x >= 0) {
+                ballTransform.theta = -(atan((double)ballTransform.y / ballTransform.x) * RAD_TO_DEG - 90);
+            }
+            else {
+                ballTransform.theta = -((atan((double)ballTransform.y / ballTransform.x) + PI) * RAD_TO_DEG - 90);
+            }
         }
     }
     else {
-        ballTransform.detected = false;
+        nd++;
     }
 
-#ifdef DEBUG
     if (r == PIXY_RESULT_ERROR) {
         lcd.setCursor(0, 0);
         lcd.print("Error");
+        ballTransform.detected = false;
     }
     else if (r == PIXY_RESULT_BUSY) {
         lcd.setCursor(0, 0);
         lcd.print("Busy");
+        ballTransform.detected = false;
     }
-    else if (r > 0) {
+    else if (r > 0 && ballTransform.detected) {
         lcd.setCursor(0, 0);
-        lcd.print("Dtected");
-        lcd.setCursor(0, 1);
         lcd.print("r: ");
         lcd.print(ballTransform.r);
         lcd.print(" t: ");
         lcd.print(ballTransform.theta);
-        moves->GetBall(ballTransform.r, ballTransform.theta, 35, &zone);
+        lcd.setCursor(0, 1);
+        lcd.print(zone);
+        nd = 0;
     }
     else {
         // Ball finding
-        driver->Brake();
+        if (nd > 200) {
+            ballTransform.detected = false;
+        }
+        nd++;
         lcd.clear();
     }
-#endif
 
     return r;
 }

@@ -39,6 +39,9 @@ class Driver {
         Motor* m2;
         Motor* m3;
         Motor* m4;
+
+        int current_theta = 0;
+        bool isMoving = false;
 };
 
 #endif
