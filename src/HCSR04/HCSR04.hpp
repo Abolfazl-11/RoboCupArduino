@@ -3,6 +3,8 @@
 #define FIELD_WIDTH 175
 #define FIELD_LENGHT 235
 
+#define TIMEOUT 3000
+
 typedef struct Position {
     double x;
     double y;
@@ -10,7 +12,7 @@ typedef struct Position {
 
 class SR {
     public:
-        SR(int trigpin, int echopin);
+        SR(uint16_t trigpin, uint16_t echopin);
         double readsr();
     private :
         int trigpin;

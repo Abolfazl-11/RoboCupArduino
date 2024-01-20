@@ -11,8 +11,8 @@
 // Defines
 #define MPU_READ_TH 5
 #define DEBUG_TIM 200
-#define PIXY_READ_TH 100
-#define SR_READ_TH 200
+#define PIXY_READ_TH 50
+#define SR_READ_TH 500
 
 #define PIXY_X_MIN 52
 #define PIXY_X_MAX 267
@@ -20,6 +20,8 @@
 #define PIXY_Y_MAX 207
 #define PIXY_X_MID 157
 #define PIXY_Y_MID 103
+
+#define SPEED 45
 
 #define DEBUG
 
@@ -123,14 +125,18 @@ void Timer_IT_Callback() {
 
     // Reading SRs every 200ms
     if (!(timerCounter%SR_READ_TH) && setuped) {
-        //s1 = sr1->readsr();
-        //s2 = sr2->readsr();
+        s1 = sr1->readsr();
+        s2 = sr2->readsr();
         //s3 = sr3->readsr();
         //s4 = sr4->readsr();
-
+        
+        moves->sr1 = s1;
+        moves->sr2 = s2;
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print(s1);
+        lcd.setCursor(0, 1);
+        lcd.print(s2);
     }
 
     /*
@@ -185,7 +191,6 @@ void setup(){
     Wire.setSCL(PB10);
     Wire.begin();
     Wire.setClock(400000);
-
     dmpR = setupMPU6050DMP(25);
 
     if (dmpR) {
@@ -206,7 +211,7 @@ void loop() {
     switch(state) {
         case IN:
             if (ballTransform.detected) {
-                moves->GetBall(ballTransform.r, ballTransform.theta, 35, &zone);
+                moves->GetBall(ballTransform.r, ballTransform.theta, SPEED, &zone);
             }
             else {
                 if (driver->isMoving) driver->Brake();
@@ -378,13 +383,13 @@ uint8_t GetBallPos() {
         ballTransform.detected = false;
     }
     else if (r > 0 && ballTransform.detected) {
-        lcd.setCursor(0, 0);
-        lcd.print("r: ");
-        lcd.print(ballTransform.r);
-        lcd.print(" t: ");
-        lcd.print(ballTransform.theta);
-        lcd.setCursor(0, 1);
-        lcd.print(zone);
+        //lcd.setCursor(0, 0);
+        //lcd.print("r: ");
+        //lcd.print(ballTransform.r);
+        //lcd.print(" t: ");
+        //lcd.print(ballTransform.theta);
+        //lcd.setCursor(0, 1);
+        //lcd.print(zone);
         nd = 0;
     }
     else {
@@ -393,7 +398,7 @@ uint8_t GetBallPos() {
             ballTransform.detected = false;
         }
         nd++;
-        lcd.clear();
+        //lcd.clear();
     }
 
     return r;

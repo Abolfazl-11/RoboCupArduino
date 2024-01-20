@@ -31,7 +31,7 @@ void Moves::GetBall(int r, int theta, uint16_t speed, Zones* zone) {
             break;
 
         case INGETBALL:
-            driver->gotoPoint(0, speed);
+            Attack(speed);
             break;
 
         case NA:
@@ -62,4 +62,18 @@ void Moves::RotateToZero(int e) {
     driver->Rotate(d, u);
 
     pve = e;
+}
+
+void Moves::Attack(uint32_t speed) {
+    if (abs(sr1 - sr2) > GOAL_TH) {
+        if (sr1 < sr2) {
+            driver->gotoPoint(-30, speed);
+        }
+        else {
+            driver->gotoPoint(30, speed);
+        }
+    }
+    else {
+        driver->gotoPoint(0, speed);
+    }
 }

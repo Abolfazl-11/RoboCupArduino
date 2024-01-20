@@ -15,6 +15,8 @@
 
 #define ROTTH 4
 
+#define GOAL_TH 15
+
 typedef enum Zones {FAR, CLOSE, INGETBALL,  NA} Zones;
 
 class Moves{
@@ -24,6 +26,10 @@ class Moves{
         void GetBall(int r, int theta, uint16_t speed, Zones* zone);
 
         void RotateToZero(int e);
+
+        void Attack(uint32_t speed);
+
+        double sr1, sr2;
     private:
         Driver* driver;
         float pve = 0;
