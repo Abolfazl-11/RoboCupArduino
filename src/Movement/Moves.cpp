@@ -27,7 +27,7 @@ void Moves::GetBall(int r, int theta, uint16_t speed, Zones* zone) {
             break;
 
         case CLOSE:
-            driver->gotoPoint(theta >= 0 ? theta + 55 : theta - 55, speed);
+			driver->gotoPoint(theta >= 0 ? theta + 40 : theta - 40, speed);
             break;
 
         case INGETBALL:

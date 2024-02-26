@@ -20,7 +20,7 @@
 #define _TPIXY2_H
 
 // uncomment to turn on debug prints to console
-#define PIXY_DEBUG
+//#define PIXY_DEBUG
 
 #define PIXY_DEFAULT_ARGVAL                  0x80000000
 #define PIXY_BUFFERSIZE                      0x104

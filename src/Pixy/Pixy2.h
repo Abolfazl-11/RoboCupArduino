@@ -20,7 +20,7 @@
 #include "TPixy2.h"
 #include "SPI.h"
 
-#define PIXY_SPI_CLOCKRATE       2000000
+#define PIXY_SPI_CLOCKRATE       500000
 
 SPIClass SPI_1(PB5, PB4, PB3);
 

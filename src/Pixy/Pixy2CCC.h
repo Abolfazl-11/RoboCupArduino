@@ -102,8 +102,6 @@ template <class LinkType> int8_t Pixy2CCC<LinkType>::getBlocks(bool wait, uint8_
   blocks = NULL;
   numBlocks = 0;
   
-  while(1)
-  {
     // fill in request data
     m_pixy->m_bufPayload[0] = sigmap;
     m_pixy->m_bufPayload[1] = maxBlocks;
@@ -121,7 +119,7 @@ template <class LinkType> int8_t Pixy2CCC<LinkType>::getBlocks(bool wait, uint8_
         return numBlocks;
       }
 	  // deal with busy and program changing states from Pixy (we'll wait)
-      else if (m_pixy->m_type==PIXY_TYPE_RESPONSE_ERROR)
+      else
       {
         if ((int8_t)m_pixy->m_buf[0]==PIXY_RESULT_BUSY)
         {
@@ -133,12 +131,12 @@ template <class LinkType> int8_t Pixy2CCC<LinkType>::getBlocks(bool wait, uint8_
       }
     }
     else
+    {
       return PIXY_RESULT_ERROR;  // some kind of bitstream error
+    }
   
     // If we're waiting for frame data, don't thrash Pixy with requests.
     // We can give up half a millisecond of latency (worst case)	
-    delayMicroseconds(500);
-  }
 }
 
 #endif

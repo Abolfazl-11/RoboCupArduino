@@ -1,17 +1,17 @@
 #include <Arduino.h>
 #include "./Motors.hpp"
 
-#define Kp 0.84
-#define Ki 1.26
-#define Kd 1.07
+#define Kp 0.72
+#define Ki 1.2
+#define Kd 1.7
 
 #define TIME 0.200
 
 #define MAXROTATESPEED 20
 #define MOVEINGPIDMULT .55
 
-#define ZONEDISTH 65
-#define GETBALLANGLETH 14
+#define ZONEDISTH 55
+#define GETBALLANGLETH 8
 
 #define ROTTH 4
 
