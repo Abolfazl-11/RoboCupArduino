@@ -152,7 +152,7 @@ template <class LinkType> int8_t TPixy2<LinkType>::init(uint32_t arg)
   
   // wait for pixy to be ready -- that is, Pixy takes a second or 2 boot up
   // getVersion is an effective "ping".  We timeout after 5s.
-  for(t0=millis(); millis()-t0<5000; )
+  for(t0=millis(); millis()-t0<1000; )
   {
     if (getVersion()>=0) // successful version get -> pixy is ready
 	{

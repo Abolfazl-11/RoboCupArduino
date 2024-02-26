@@ -32,6 +32,7 @@ Driver::Driver(Motor* motor1, Motor* motor2, Motor* motor3, Motor* motor4) {
 }
 
 void Driver::gotoPoint(int theta, int speed) {
+    current_theta = theta;
     theta -= 45;
     
     double x = sin(theta * DEG_TO_RAD);
@@ -41,59 +42,148 @@ void Driver::gotoPoint(int theta, int speed) {
     m2->setSpeed((int)(abs(x) * speed), (x >= 0 ? !m2->reverse : m2->reverse));
     m3->setSpeed((int)(abs(y) * speed), (y >= 0 ? m3->reverse : !m3->reverse));
     m4->setSpeed((int)(abs(x) * speed), (x >= 0 ? !m4->reverse : m4->reverse));
+
+    isMoving = true;
 }
 
 void Driver::Rotate(int dir, int speed) {
     if (dir) {
-        m1->setSpeed(m1->current_speed + speed, m1->enable);
-        m1->current_speed -= speed;
-
-        m2->setSpeed(m2->current_speed + speed, m2->enable);
-        m2->current_speed -= speed;
-
-        if (m3->current_speed >= speed) {
-            m3->setSpeed(m3->current_speed - speed, m3->enable);
-            m3->current_speed += speed;
+        // Motor 1
+        if (m1->enable == m1->reverse) {
+            m1->setSpeed(m1->current_speed + speed, m1->enable);
+            m1->current_speed -= speed;
         }
         else {
-            m3->setSpeed(abs(m3->current_speed - speed), !m3->enable);
-            m3->current_speed = speed - m3->current_speed;
-            m3->enable = !m3->enable;
+            if (m1->current_speed >= speed) {
+                m1->setSpeed(m1->current_speed - speed, m1->enable);
+                m1->current_speed += speed;
+            }
+            else {
+                m1->setSpeed(abs(m1->current_speed - speed), !m1->enable);
+                m1->current_speed = speed - m1->current_speed;
+                m1->enable = !m1->enable;
+            }
         }
-        if (m4->current_speed >= speed) {
-            m4->setSpeed(m4->current_speed - speed, m4->enable);
-            m4->current_speed += speed;
+
+        // Motor 2
+        if (m2->enable == m2->reverse) {
+            m2->setSpeed(m2->current_speed + speed, m2->enable);
+            m2->current_speed -= speed;
         }
         else {
-            m4->setSpeed(abs(m4->current_speed - speed), !m4->enable);
-            m4->current_speed = speed - m4->current_speed;
-            m4->enable = !m4->enable;
+            if (m2->current_speed >= speed) {
+                m2->setSpeed(m2->current_speed - speed, m2->enable);
+                m2->current_speed += speed;
+            }
+            else {
+                m2->setSpeed(abs(m2->current_speed - speed), !m2->enable);
+                m2->current_speed = speed - m2->current_speed;
+                m2->enable = !m2->enable;
+            }
+        }
+
+        // Motor 3
+        if (m3->enable == m3->reverse) {
+            if (m3->current_speed >= speed) {
+                m3->setSpeed(m3->current_speed - speed, m3->enable);
+                m3->current_speed += speed;
+            }
+            else {
+                m3->setSpeed(abs(m3->current_speed - speed), !m3->enable);
+                m3->current_speed = speed - m3->current_speed;
+                m3->enable = !m3->enable;
+            }
+        }
+        else {
+            m3->setSpeed(m3->current_speed + speed, m3->enable);
+            m3->current_speed -= speed;
+        }
+
+        // Motor 4
+        if (m4->enable == m4->reverse) {
+            if (m4->current_speed >= speed) {
+                m4->setSpeed(m4->current_speed - speed, m4->enable);
+                m4->current_speed += speed;
+            }
+            else {
+                m4->setSpeed(abs(m4->current_speed - speed), !m4->enable);
+                m4->current_speed = speed - m4->current_speed;
+                m4->enable = !m4->enable;
+            }
+        }
+        else {
+            m4->setSpeed(m4->current_speed + speed, m4->enable);
+            m4->current_speed -= speed;
         }
     }
     else {
-        if (m1->current_speed >= speed) {
-            m1->setSpeed(m1->current_speed - speed, m1->enable);
-            m1->current_speed += speed;
+        // Motor 1
+        if (m1->enable == m1->reverse) {
+            if (m1->current_speed >= speed) {
+                m1->setSpeed(m1->current_speed - speed, m1->enable);
+                m1->current_speed += speed;
+            }
+            else {
+                m1->setSpeed(abs(m1->current_speed - speed), !m1->enable);
+                m1->current_speed = speed - m1->current_speed;
+                m1->enable = !m1->enable;
+            }
         }
         else {
-            m1->setSpeed(abs(m1->current_speed - speed), !m1->enable);
-            m1->current_speed = speed - m1->current_speed;
-            m1->enable = !m1->enable;
+            m1->setSpeed(m1->current_speed + speed, m1->enable);
+            m1->current_speed -= speed;
         }
-        if (m2->current_speed >= speed) {
-            m2->setSpeed(m2->current_speed - speed, m2->enable);
-            m2->current_speed += speed;
-        }
-        else {
-            m2->setSpeed(abs(m2->current_speed - speed), !m2->enable);
-            m2->current_speed = speed - m2->current_speed;
-            m2->enable = !m2->enable;
-        }
-        m3->setSpeed(m3->current_speed + speed, m3->enable);
-        m3->current_speed -= speed;
 
-        m4->setSpeed(m4->current_speed + speed, m4->enable);
-        m4->current_speed -= speed;
+        // Motor 2
+        if (m2->enable == m2->reverse) {
+            if (m2->current_speed >= speed) {
+                m2->setSpeed(m2->current_speed - speed, m2->enable);
+                m2->current_speed += speed;
+            }
+            else {
+                m2->setSpeed(abs(m2->current_speed - speed), !m2->enable);
+                m2->current_speed = speed - m2->current_speed;
+                m2->enable = !m2->enable;
+            }
+        }
+        else {
+            m2->setSpeed(m2->current_speed + speed, m2->enable);
+            m2->current_speed -= speed;
+        }
+
+        // Motor 3
+        if (m3->enable == m3->reverse) {
+            m3->setSpeed(m3->current_speed + speed, m3->enable);
+            m3->current_speed -= speed;
+        }
+        else {
+            if (m3->current_speed >= speed) {
+                m3->setSpeed(m3->current_speed - speed, m3->enable);
+                m3->current_speed += speed;
+            }
+            else {
+                m3->setSpeed(abs(m3->current_speed - speed), !m3->enable);
+                m3->current_speed = speed - m3->current_speed;
+                m3->enable = !m3->enable;
+            }
+        }
+
+        // Motor 4
+        if (m4->enable == m4->reverse) {
+            m4->setSpeed(m4->current_speed + speed, m4->enable);
+            m4->current_speed -= speed;
+        }
+        else {
+            if (m4->current_speed >= speed) {
+                m4->setSpeed(m4->current_speed - speed, m4->enable);
+                m4->current_speed += speed;
+            }
+            else {
+                m4->setSpeed(abs(m4->current_speed - speed), !m4->enable);
+                m4->current_speed = speed - m4->current_speed;
+                m4->enable = !m4->enable;
+            }
+        }
     }
 }
 
@@ -117,4 +207,7 @@ void Driver::Brake() {
     digitalWrite(m4->enable_pin, HIGH);
     m4->current_speed = 0;
     m4->enable = m4->reverse;
+
+    isMoving = false;
+    current_theta = -3600;
 }

@@ -5,15 +5,16 @@ Moves::Moves(Driver* driver) {
 }
 
 void Moves::GetBall(int r, int theta, uint16_t speed, Zones* zone) {
+
     if (r >= ZONEDISTH) {
         *zone = FAR;
     }
     else if (r < ZONEDISTH) {
-        if (abs(theta) <= GETBALLANGLETH) {
-            *zone = INGETBALL;
+        if (abs(theta) >= GETBALLANGLETH) {
+            *zone = CLOSE;
         }
         else {
-            *zone = CLOSE;
+            *zone = INGETBALL;
         }
     }
     else {
@@ -24,18 +25,17 @@ void Moves::GetBall(int r, int theta, uint16_t speed, Zones* zone) {
         case FAR:
             driver->gotoPoint(theta, speed);
             break;
+
         case CLOSE:
-            if (theta > 0) {
-                driver->gotoPoint(theta + 30, speed);
-            }
-            else {
-                driver->gotoPoint(theta - 30, speed);
-            }
+            driver->gotoPoint(theta >= 0 ? theta + 55 : theta - 55, speed);
             break;
+
         case INGETBALL:
-            driver->gotoPoint(0, speed);
+            Attack(speed);
             break;
+
         case NA:
+            driver->Brake();
             break;
     }
 }
@@ -48,6 +48,7 @@ void Moves::RotateToZero(int e) {
         driver->m4->setSpeed(driver->m4->current_speed, driver->m4->enable);
         return;
     }
+
     int d = e > 0 ? LEFT : RIGHT;
     e = abs(e);
     uint32_t u = abs(Kp * e + Ki * e * TIME) + Kd * (e - abs(pve));
@@ -61,4 +62,18 @@ void Moves::RotateToZero(int e) {
     driver->Rotate(d, u);
 
     pve = e;
+}
+
+void Moves::Attack(uint32_t speed) {
+    if (abs(sr1 - sr2) > GOAL_TH) {
+        if (sr1 < sr2) {
+            driver->gotoPoint(-30, speed);
+        }
+        else {
+            driver->gotoPoint(30, speed);
+        }
+    }
+    else {
+        driver->gotoPoint(0, speed);
+    }
 }
