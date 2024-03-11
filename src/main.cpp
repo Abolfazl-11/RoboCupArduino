@@ -14,26 +14,26 @@
 #define PIXY_READ_TH 50
 #define SR_READ_TH 300
 
-#define PIXY_X_MIN 57
-#define PIXY_X_MAX 256
-#define PIXY_Y_MIN 14
-#define PIXY_Y_MAX 207
-#define PIXY_X_MID 157
-#define PIXY_Y_MID 109
+#define PIXY_X_MIN 60
+#define PIXY_X_MAX 250
+#define PIXY_Y_MIN 4
+#define PIXY_Y_MAX 154
+#define PIXY_X_MID 156
+#define PIXY_Y_MID 98
 
-#define SPEED 40 
+#define SPEED 45 
 
 #define DEBUG
 
 // Variables
-uint32_t timerCounter = 0;
+uint64_t timerCounter = 0;
 int blink = 1;
 
 int dmpR = 0;
 DMP_DATA gyro;
 
 // pixy
-//Pixy2 pixy_t;
+Pixy2 pixy_t;
 
 typedef struct BallTransform {
     int x;
@@ -79,7 +79,7 @@ HardwareTimer* tim3 = new HardwareTimer(TIM3);
 Motor* motor1 = new Motor(tim1, 2, PA8, 0, 1);
 Motor* motor2 = new Motor(tim1, 3, PA4, 0, 1);
 Motor* motor3 = new Motor(tim2, 4, PA12, 0, 1);
-Motor* motor4 = new Motor(tim1, 4, PA6, 1, 1);
+Motor* motor4 = new Motor(tim1, 4, PA6, 0, 1);
 
 Driver* driver = new Driver(motor1, motor2, motor3, motor4);
 
@@ -95,7 +95,7 @@ State state = IN;
 
 int outDir = 0;
 
-uint32_t first = -1;
+long long first = -1;
 
 uint16_t interruptCounter = 0;
 
@@ -107,26 +107,15 @@ void ReadOutDir();
 void init_pixy();
 uint8_t GetBallPos();
 
-Pixy2 pixy_t;
-
 int lcdCounter = 0;
 
+bool left = false;
 // Timer interrupt callback function
 void Timer_IT_Callback() {
     timerCounter++;
 
     if (!(timerCounter%500) && setuped) {
         blink = !blink;
-        /*
-        if (lcdCounter == 16) {
-            lcd.clear();
-            lcd.setCursor(0, 0);
-            lcdCounter = 0;
-        }
-        lcd.print(state);
-        lcdCounter++;
-        */
-        //ser.println(state);
         digitalWrite(PC13, (blink ? HIGH : LOW));
     }
 
@@ -135,7 +124,7 @@ void Timer_IT_Callback() {
         GetBallPos();
     }
 
-    // Reading MPU6050 every 50ms
+    // Reading MPU6050 every 5ms
     if (!(timerCounter%MPU_READ_TH) && setuped) {
         getDMPData(&gyro);
         moves->RotateToZero(gyro.yaw);
@@ -145,9 +134,9 @@ void Timer_IT_Callback() {
     if (!(timerCounter%SR_READ_TH) && setuped) {
         //lcd.print("SRs");
         //s1 = sr1->readsr();
-        //s2 = sr2->readsr();
+        s2 = sr2->readsr();
         //s3 = sr3->readsr();
-        //s4 = sr4->readsr();
+        s4 = sr4->readsr();
         
         moves->sr1 = s4;
         moves->sr2 = s2;
@@ -158,7 +147,7 @@ bool outinterrupt_flag = false;
 
 // callback of the bottom board interrupt
 void outEXTI_Callback() {
-    outinterrupt_flag = true;
+	interruptCounter++;
 }
 
 void setup(){
@@ -182,8 +171,14 @@ void setup(){
     lcd.clear();
 
     lcd.setCursor(0, 0);
-    lcd.print("Hello, World!");
+    lcd.print("Hello, World! :)");
     delay(1000);
+    lcd.clear();
+	lcd.setCursor(0, 0);
+	lcd.print("Ahhh SHIT!");
+	lcd.setCursor(0, 1);
+	lcd.print("here we go again");
+    delay(1500);
     lcd.clear();
 
     setupTimers();
@@ -197,7 +192,7 @@ void setup(){
     Wire.setSCL(PB10);
     Wire.begin();
     Wire.setClock(400000);
-    dmpR = setupMPU6050DMP(25);
+    dmpR = setupMPU6050DMP(35);
 
     if (dmpR) {
         digitalWrite(PC13, HIGH);
@@ -212,12 +207,14 @@ void setup(){
     setuped = pixy_init && dmpR;
 }
 
+
 void loop() {
-    if (outinterrupt_flag) {
+    if (interruptCounter > 1) {
         if (state == IN) {
             state = OUT;
         }
         outinterrupt_flag = false;
+		interruptCounter = 0;
     }
     switch(state) {
         case IN:
@@ -227,29 +224,19 @@ void loop() {
             else {
                 if (driver->isMoving) driver->Brake();
             }
-
-            //driver->gotoPoint(0, SPEED);
-            //delay(1000);
-            //driver->gotoPoint(90, SPEED);
-            //delay(1000);
-            //driver->gotoPoint(180, SPEED);
-            //delay(1000);
-            //driver->gotoPoint(-90, SPEED);
-            //delay(1000);
-
             moves->RotateToZero(gyro.yaw);
 
             break;
         case OUT:
             lcd.clear();
-            lcd.print("OUT");
-            driver->Brake();
+            if (driver->isMoving) driver->Brake();
             ReadOutDir();
+            lcd.print("OUT ");
+			lcd.print(outDir);
             state = HALTED;
 
             break;
         case HALTED:
-            //digitalWrite(PC13, HIGH);
             // Front
             if (outDir == 0) {
                 driver->gotoPoint(180, SPEED - 15);
@@ -277,7 +264,6 @@ void loop() {
                 lcd.clear();
                 first = -1;
             }
-            //digitalWrite(PC13, LOW);
     
             break;
     }
@@ -361,13 +347,13 @@ void init_pixy() {
     pixy_t.init();
     
     lcd.print(pixy_t.getVersion());
-    pixy_init = true;
+    if (pixy_t.getVersion() == 16) pixy_init = true;
 }
 
 uint8_t GetBallPos() {
-    lcd.clear();
-    lcd.setCursor(0, 0);
-    lcd.print("PixyStart");
+    //lcd.clear();
+    //lcd.setCursor(0, 0);
+    //lcd.print("PixyStart");
     int8_t r = pixy_t.ccc.getBlocks(false, CCC_SIG_ALL, 1);
 
     ballTransform.detected = false;
@@ -400,6 +386,7 @@ uint8_t GetBallPos() {
         lcd.setCursor(0, 0);
         lcd.print("Error");
         ballTransform.detected = false;
+		return -1;
     }
     else if (r == PIXY_RESULT_BUSY) {
         lcd.setCursor(0, 0);
@@ -407,10 +394,14 @@ uint8_t GetBallPos() {
         ballTransform.detected = false;
     }
     else if (r > 0 && ballTransform.detected) {
-        //lcd.print(" t: ");
-        //lcd.print(ballTransform.theta);
-        //lcd.setCursor(0, 1);
-        //lcd.print(zone);
+		lcd.clear();
+		lcd.setCursor(0, 0);
+		lcd.print("r: ");
+		lcd.print(ballTransform.r);
+        lcd.print(" t: ");
+        lcd.print(ballTransform.theta);
+        lcd.setCursor(0, 1);
+        lcd.print(zone);
         nd = 0;
     }
     else {
@@ -422,8 +413,8 @@ uint8_t GetBallPos() {
         //lcd.clear();
     }
     
-    lcd.setCursor(0, 1);
-    lcd.print("PixyEnded");
+    //lcd.setCursor(0, 1);
+    //lcd.print("PixyEnded");
 
     return r;
 }

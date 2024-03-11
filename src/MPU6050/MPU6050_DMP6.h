@@ -15,9 +15,9 @@
 #define MPU6050DMP6_
 
 typedef struct DMP_DATA {
-    float yaw;
-    float pitch;
-    float roll;
+    double yaw;
+    double pitch;
+    double roll;
 } DMP_DATA;
 
 int setupMPU6050DMP(int citer);
