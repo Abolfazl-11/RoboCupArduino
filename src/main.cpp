@@ -14,6 +14,7 @@
 #define PIXY_READ_TH 50
 #define SR_READ_TH 300
 
+
 #define PIXY_X_MIN 60
 #define PIXY_X_MAX 250
 #define PIXY_Y_MIN 4
