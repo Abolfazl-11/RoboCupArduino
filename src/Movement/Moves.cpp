@@ -10,12 +10,33 @@ void Moves::GetBall(int r, int theta, uint16_t speed, Zones* zone, int& goal, in
         *zone = FAR;
     }
     else if (r < ZONEDISTH) {
-        if (abs(theta) >= GETBALLANGLETH) {
-            *zone = CLOSE;
-        }
-        else {
-            *zone = INGETBALL;
-        }
+		if (abs(theta) > FGETBALLANGLETH) {
+			if (theta > FB_TH || theta < -FB_TH) {
+				*zone = CLOSEREAR;
+			}
+			else {
+				*zone = CLOSEFRONT;
+			}
+		}
+		else {
+			if (r > GETBALLZONE_TH) {
+				*zone = FGETBALL;
+			}
+			else {
+				if (abs(theta) > CGETBALLANGLETH) {
+					
+					if (theta > FB_TH || theta < -FB_TH) {
+						*zone = CLOSEREAR;
+					}
+					else {
+						*zone = CLOSEFRONT;
+					}
+				}
+				else {
+					*zone = INGETBALL;
+				}
+			}
+		}
     }
     else {
         *zone = NA;
@@ -27,27 +48,37 @@ void Moves::GetBall(int r, int theta, uint16_t speed, Zones* zone, int& goal, in
                 backingToGoal = 0;
                 driver->gotoPoint(theta, speed);
             }
-            else if (abs(theta) > GETBALLANGLETH) {
+            else if (abs(theta) > FGETBALLANGLETH) {
                 if (theta > 0) {
-                    driver->gotoPoint(100, speed);
+                    driver->gotoPoint(95, speed);
                 }
                 else if (theta < 0) {
-                    driver->gotoPoint(-100, speed);
+                    driver->gotoPoint(95, speed);
                 }
             }
             break;
 
-        case CLOSE:
+        case CLOSEFRONT:
             goal = 0;
             backingToGoal = 0;
-            driver->gotoPoint(theta >= 0 ? theta + 55 : theta - 55, speed);
+            driver->gotoPoint(theta >= 0 ? theta + CLOSEF_OFF: theta - CLOSEF_OFF, speed - 10);
             break;
+
+        case CLOSEREAR:
+            goal = 0;
+            backingToGoal = 0;
+            driver->gotoPoint(theta >= 0 ? theta + CLOSEB_OFF: theta - CLOSEB_OFF, speed - 10);
+            break;
+
+		case FGETBALL:
+			goal = 0;
+			backingToGoal = 0;
+			driver->gotoPoint(theta, speed - 10);
 
         case INGETBALL:
             goal = 0;
             backingToGoal = 0;
-            driver->gotoPoint(0, speed);
-            //Attack(speed);
+            Attack(speed);
             break;
 
         case NA:
@@ -56,7 +87,7 @@ void Moves::GetBall(int r, int theta, uint16_t speed, Zones* zone, int& goal, in
     }
 }
 
-void Moves::RotateToZero(int e) {
+void Moves::RotateToZero(double e) {
     if (abs(e) < ROTTH) {
         driver->m1->setSpeed(driver->m1->current_speed, driver->m1->enable);
         driver->m2->setSpeed(driver->m2->current_speed, driver->m2->enable);
@@ -95,7 +126,7 @@ void Moves::Attack(uint32_t speed) {
 }
 
 void Moves::BackToGoal(uint32_t speed) {
-   if (abs(sr1 - sr2) > 15) {
+   if (abs(sr1 - sr2) > 17) {
        if (sr1 > sr2) {
            driver->gotoPoint(110, speed);
        }
