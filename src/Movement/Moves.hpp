@@ -10,7 +10,7 @@
 #define MAXROTATESPEED 30
 #define MOVEINGPIDMULT 1.4
 
-#define ZONEDISTH 80
+#define ZONEDISTH 65
 #define GETBALLZONE_TH 40
 
 #define FGETBALLANGLETH 14
@@ -39,7 +39,9 @@ class Moves{
 
         void BackToGoal(uint32_t speed);
 
-        double sr1, sr2;
+		void CenterInGoal(uint32_t speed, bool& centering);
+
+        double sr1, sr2, sr3;
     private:
         Driver* driver;
         float pve = 0;

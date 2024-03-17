@@ -47,15 +47,19 @@ void Moves::GetBall(int r, int theta, uint16_t speed, Zones* zone, int& goal, in
             if (!goal) {
                 backingToGoal = 0;
                 driver->gotoPoint(theta, speed);
-            }
-            else if (abs(theta) > FGETBALLANGLETH) {
-                if (theta > 0) {
-                    driver->gotoPoint(95, speed);
-                }
-                else if (theta < 0) {
-                    driver->gotoPoint(95, speed);
-                }
-            }
+            } else {
+				if (abs(theta) > FGETBALLANGLETH) {
+					if (theta > 0) {
+						driver->gotoPoint(90, speed - 10);
+					}
+					else if (theta < 0) {
+						driver->gotoPoint(-90, speed - 10);
+					}
+				}
+				else {
+					driver->Brake();
+				}
+            } 
             break;
 
         case CLOSEFRONT:
@@ -126,15 +130,42 @@ void Moves::Attack(uint32_t speed) {
 }
 
 void Moves::BackToGoal(uint32_t speed) {
-   if (abs(sr1 - sr2) > 17) {
-       if (sr1 > sr2) {
-           driver->gotoPoint(110, speed);
-       }
-       else {
-           driver->gotoPoint(-110, speed);
-       }
-   }
-   else {
-       driver->gotoPoint(180, speed);
-   }
+	if (sr3 > 40) {
+		if (abs(sr1 - sr2) > 17) {
+		   if (sr1 > sr2) {
+			   driver->gotoPoint(110, speed);
+		   }
+		   else {
+			   driver->gotoPoint(-110, speed);
+		   }
+		}
+		else {
+		   driver->gotoPoint(180, speed);
+		}
+	}
+	else {
+		driver->gotoPoint(0, speed - 10);
+	}
+}
+
+void Moves::CenterInGoal(uint32_t speed, bool& centering) {
+	centering = true;
+	if (sr3 > 35) {
+		if (abs(sr2 - sr1) > 10) {
+			if (sr2 > sr1) {
+				driver->gotoPoint(-90, speed);
+			}
+			else {
+				driver->gotoPoint(90, speed);
+			}
+		} else if (sr3 > 42) {
+			driver->gotoPoint(180, speed);
+		}
+		else {
+			centering = false;
+		}
+	}
+	else {
+		driver->gotoPoint(0, speed + 10);
+	}
 }

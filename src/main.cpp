@@ -12,14 +12,14 @@
 #define MPU_READ_TH 5
 #define DEBUG_TIM 200
 #define PIXY_READ_TH 50
-#define SR_READ_TH 500
+#define SR_READ_TH 200
 
 #define PIXY_X_MIN 60
 #define PIXY_X_MAX 250
 #define PIXY_Y_MIN 4
 #define PIXY_Y_MAX 154
 #define PIXY_X_MID 156
-#define PIXY_Y_MID 98
+#define PIXY_Y_MID 90
 
 #define SPEED 45
 
@@ -123,6 +123,12 @@ void Timer_IT_Callback() {
     if (!(timerCounter%500) && setuped) {
         blink = !blink;
         digitalWrite(PC13, (blink ? HIGH : LOW));
+		lcd.setCursor(2, 1);
+		lcd.print(backingToGoal);
+		lcd.print(' ');
+		lcd.print(inGoal);
+		lcd.print(' ');
+		lcd.print(centering);
     }
 
     // Reading Pixy every 150ms
@@ -139,16 +145,13 @@ void Timer_IT_Callback() {
     // Reading SRs every 200ms
     if (!(timerCounter%SR_READ_TH) && setuped) {
         //s1 = sr1->readsr();
-        s2 = sr2->readsr();
-        //s3 = sr3->readsr();
+        s2 = sr2->readsr() - 5;
+        s3 = sr3->readsr();
         s4 = sr4->readsr();
         
         moves->sr1 = s4;
         moves->sr2 = s2;
-        //lcd.setCursor(0, 0);
-        //lcd.print(s2);
-        //lcd.setCursor(0, 1);
-        //lcd.print(s4);
+		moves->sr3 = s3;
     }
 
     /*
@@ -235,47 +238,31 @@ void loop() {
         case IN:
             if (ballTransform.detected) {
                 moves->GetBall(ballTransform.r, ballTransform.theta, SPEED, &zone, inGoal, backingToGoal);
+				centering = false;
                 noBall = 0;
             }
             else {
                 if (driver->isMoving && !backingToGoal && !centering) driver->Brake();
                 noBall++;
 
-                if (noBall >= 10000 && !inGoal) {
-                    backingToGoal = true;
-                    moves->BackToGoal(SPEED - 10);
-                }
-
-                if (inGoal) {
-                    noBall = 0;
-                    if (abs(s2 - s4) > 15) {
-                        centering = true;
-                        if (s2 > s4) {
-                            driver->gotoPoint(-90, 25);
-                        }
-                        else {
-                            driver->gotoPoint(90, 25);
-                        }
-                    }
-                    else {
-                        centering = false;
-                        driver->Brake();
-                    }
+                if (noBall >= 100000) {
+					if (!inGoal) {
+						backingToGoal = true;
+						moves->BackToGoal(SPEED - 10);
+					}
+					else {
+						moves->CenterInGoal(SPEED - 30, centering);
+					}
                 }
             }
 
             moves->RotateToZero(gyro.yaw);
-
-			lcd.setCursor(2, 1);
-			lcd.print(backingToGoal);
 
             break;
         case OUT:
             if (driver->isMoving) driver->Brake();
             ReadOutDir();
             state = HALTED;
-			lcd.print("OUT ");
-			lcd.print(outDir);
 
             break;
         case HALTED:
@@ -291,7 +278,7 @@ void loop() {
                 else {
                     backingToGoal = 0;
                     inGoal = 1;
-                    driver->gotoPoint(0, SPEED - 25);
+                    driver->gotoPoint(0, SPEED - 30);
                     noBall = 0;
                 }
             }

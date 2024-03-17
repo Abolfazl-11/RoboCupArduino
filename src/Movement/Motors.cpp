@@ -189,22 +189,22 @@ void Driver::Rotate(int dir, int speed) {
 
 void Driver::Brake() {
     m1->tim->setCaptureCompare(m1->channle, 0, PERCENT_COMPARE_FORMAT);
-    digitalWrite(m1->enable_pin, HIGH);
+    digitalWrite(m1->enable_pin, m1->reverse);
     m1->current_speed = 0;
     m1->enable = m1->reverse;
 
     m2->tim->setCaptureCompare(m2->channle, 0, PERCENT_COMPARE_FORMAT);
-    digitalWrite(m2->enable_pin, HIGH);
+    digitalWrite(m2->enable_pin, m2->reverse);
     m2->current_speed = 0;
     m2->enable = m2->reverse;
 
     m3->tim->setCaptureCompare(m3->channle, 0, PERCENT_COMPARE_FORMAT);
-    digitalWrite(m3->enable_pin, HIGH);
+    digitalWrite(m3->enable_pin, m3->reverse);
     m3->current_speed = 0;
     m3->enable = m3->reverse;
 
     m4->tim->setCaptureCompare(m4->channle, 0, PERCENT_COMPARE_FORMAT);
-    digitalWrite(m4->enable_pin, HIGH);
+    digitalWrite(m4->enable_pin, m4->reverse);
     m4->current_speed = 0;
     m4->enable = m4->reverse;
 
