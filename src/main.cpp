@@ -1,3 +1,5 @@
+// In the name of Allah
+
 // includes
 #include <Arduino.h>
 #include <math.h>
@@ -14,19 +16,29 @@
 #define PIXY_READ_TH 50
 #define SR_READ_TH 300
 
+/*
+#define PIXY_X_MIN 63
+#define PIXY_X_MAX 269
+#define PIXY_Y_MIN 7
+#define PIXY_Y_MAX 207
+#define PIXY_X_MID 164
+#define PIXY_Y_MID 100
+*/
+//*
 #define PIXY_X_MIN 60
 #define PIXY_X_MAX 250
 #define PIXY_Y_MIN 4
 #define PIXY_Y_MAX 154
 #define PIXY_X_MID 156
 #define PIXY_Y_MID 98
+//*/
 
 #define SPEED 45 
 
 #define DEBUG
 
 // Variables
-uint64_t timerCounter = 0;
+long long timerCounter = 0;
 int blink = 1;
 
 int dmpR = 0;
@@ -89,9 +101,9 @@ Zones zone = NA;
 
 int nd = 0;
 
-typedef enum State {IN, OUT, HALTED} State;
+typedef enum State {IN, OUT, HALTED, NS} State;
 
-State state = IN;
+State state = NS;
 
 int outDir = 0;
 
@@ -150,13 +162,20 @@ void outEXTI_Callback() {
 	interruptCounter++;
 }
 
+void startEXTI_Callback() {
+	state = IN;
+	stm32_interrupt_disable(GPIOC, GPIO_PIN_0);
+}
+
 void setup(){
     // pin setup
     pinMode(PC13, OUTPUT);
 
     pinMode(PB2, INPUT_PULLDOWN);
 
+
     stm32_interrupt_enable(GPIOB, GPIO_PIN_2, outEXTI_Callback, GPIO_MODE_IT_RISING);
+    stm32_interrupt_enable(GPIOC, GPIO_PIN_0, startEXTI_Callback, GPIO_MODE_IT_RISING);
 
     pinMode(PA7, INPUT);
     pinMode(PB1, INPUT);
@@ -266,6 +285,8 @@ void loop() {
             }
     
             break;
+		case NS:
+			break;
     }
 }
 
@@ -354,7 +375,7 @@ uint8_t GetBallPos() {
     //lcd.clear();
     //lcd.setCursor(0, 0);
     //lcd.print("PixyStart");
-    int8_t r = pixy_t.ccc.getBlocks(false, CCC_SIG_ALL, 1);
+    int8_t r = pixy_t.ccc.getBlocks(false, CCC_SIG_ALL, 5);
 
     ballTransform.detected = false;
     if (pixy_t.ccc.numBlocks > 0) {
