@@ -16,22 +16,22 @@
 #define PIXY_READ_TH 50
 #define SR_READ_TH 300
 
-/*
-#define PIXY_X_MIN 63
-#define PIXY_X_MAX 269
-#define PIXY_Y_MIN 7
-#define PIXY_Y_MAX 207
-#define PIXY_X_MID 164
-#define PIXY_Y_MID 100
-*/
 //*
+#define PIXY_X_MIN 65
+#define PIXY_X_MAX 275
+#define PIXY_Y_MIN 8
+#define PIXY_Y_MAX 207
+#define PIXY_X_MID 170
+#define PIXY_Y_MID 108
+//*/
+/*
 #define PIXY_X_MIN 60
 #define PIXY_X_MAX 250
 #define PIXY_Y_MIN 4
 #define PIXY_Y_MAX 154
 #define PIXY_X_MID 156
 #define PIXY_Y_MID 98
-//*/
+*/
 
 #define SPEED 45 
 
@@ -170,12 +170,17 @@ void startEXTI_Callback() {
 void setup(){
     // pin setup
     pinMode(PC13, OUTPUT);
+	pinMode(PC1, OUTPUT);
+	pinMode(PC2, OUTPUT);
+	pinMode(PC4, OUTPUT);
+	pinMode(PC5, OUTPUT);
+
+	pinMode(PB0, INPUT_PULLDOWN);
 
     pinMode(PB2, INPUT_PULLDOWN);
 
-
     stm32_interrupt_enable(GPIOB, GPIO_PIN_2, outEXTI_Callback, GPIO_MODE_IT_RISING);
-    stm32_interrupt_enable(GPIOC, GPIO_PIN_0, startEXTI_Callback, GPIO_MODE_IT_RISING);
+    stm32_interrupt_enable(GPIOC, GPIO_PIN_7, startEXTI_Callback, GPIO_MODE_IT_RISING);
 
     pinMode(PA7, INPUT);
     pinMode(PB1, INPUT);
@@ -184,6 +189,11 @@ void setup(){
     delay(500);
     digitalWrite(PC13, LOW);
     delay(500);
+
+	digitalWrite(PC1, LOW);
+	digitalWrite(PC2, LOW);
+	digitalWrite(PC4, LOW);
+	digitalWrite(PC5, LOW);
 
     lcd.begin(16, 2);
 
@@ -215,6 +225,7 @@ void setup(){
 
     if (dmpR) {
         digitalWrite(PC13, HIGH);
+		digitalWrite(PC1, HIGH);
         lcd.setCursor(0, 0);
         lcd.print("gyro init");
         delay(1000);
@@ -222,6 +233,10 @@ void setup(){
     }
     digitalWrite(PC13, LOW);
     delay(500);
+
+	while (digitalRead(PB0) != HIGH) {}
+
+	digitalWrite(PC5, HIGH);
 
     setuped = pixy_init && dmpR;
 }
@@ -368,7 +383,10 @@ void init_pixy() {
     pixy_t.init();
     
     lcd.print(pixy_t.getVersion());
-    if (pixy_t.getVersion() == 16) pixy_init = true;
+    if (pixy_t.getVersion() == 16) {
+		pixy_init = true;
+		digitalWrite(PC2, HIGH);
+	}
 }
 
 uint8_t GetBallPos() {
@@ -411,7 +429,7 @@ uint8_t GetBallPos() {
     }
     else if (r == PIXY_RESULT_BUSY) {
         lcd.setCursor(0, 0);
-        lcd.print("Busy");
+        //lcd.print("Busy");
         ballTransform.detected = false;
     }
     else if (r > 0 && ballTransform.detected) {
